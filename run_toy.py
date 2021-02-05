@@ -24,6 +24,7 @@ parser.add_argument('-b', '--batch_size', type=int, default=50)
 parser.add_argument('-enn', '--num_epoch_bnn', type=int, default=20000)
 parser.add_argument('--coeff_ll', type=float, default=1.)
 parser.add_argument('--coeff_kl', type=float, default=1.)
+parser.add_argument('--cuda', type=bool, default=True)
 
 group = parser.add_mutually_exclusive_group()
 group.add_argument('-rbf', '--RBF_Kernel', action='store_true')
@@ -57,7 +58,7 @@ gradient_estimator = SpectralScoreEstimator(eta=args.eta, n_eigen_threshold=args
 obs_var = toy_data.y_std ** 2
 
 fvi = FunctionalVI(kernel, mfnn, rand_generator, gradient_estimator, obs_var, args.n_oodsamples, args.n_functions,
-                   args.injected_noise)
+                   args.injected_noise, args.cuda)
 
 fvi.build_prior_gp(x_train, y_train, args.learning_rate_gp, args.num_epoch_gp)
 
@@ -94,5 +95,5 @@ for i in range(5):
                      alpha=1.0 - i * 0.15, color='lightblue')
 
 plt.legend(['train', 'test', 'predicted mean'])
-# plt.show()
-plt.savefig('FBNN-' + kernel_type + '.pdf')
+plt.show()
+# plt.savefig('FBNN-' + kernel_type + '.pdf')

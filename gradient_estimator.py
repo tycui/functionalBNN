@@ -139,7 +139,7 @@ class SpectralScoreEstimator(ScoreEstimator):
         # grad_K2: [..., M, M, x_dim]
         Kq, grad_K1, grad_K2 = self.grad_gram(samples, samples, kernel_width)
         if self._eta is not None:
-            Kq += self._eta * torch.eye(M)
+            Kq += self._eta * torch.eye(M).to(samples.device)
         # eigen_vectors: [..., M, M]
         # eigen_values: [..., M]
         eigen_values, eigen_vectors = torch.symeig(Kq, eigenvectors=True)
@@ -151,18 +151,15 @@ class SpectralScoreEstimator(ScoreEstimator):
             self._n_eigen = torch.sum(torch.lt(eigen_cum, self._n_eigen_threshold))
 
         if self._n_eigen is not None:
-            # eigen_values: [..., n_eigen]
-            # eigen_vectors: [..., M, n_eigen]
+
             eigen_values = eigen_values[..., -self._n_eigen:]
             eigen_vectors = eigen_vectors[..., -self._n_eigen:]
-        # eigen_ext: [..., N, n_eigen]
+
         eigen_ext = self.nystrom_ext(samples, x, eigen_vectors, eigen_values, kernel_width)
 
         grad_K1_avg = torch.mean(grad_K1, dim=-3)
         beta = -torch.sqrt(torch.tensor(M).float()) * torch.matmul(torch.transpose(eigen_vectors, 0, 1),
                                                                    grad_K1_avg) / eigen_values.view(self._n_eigen, 1)
-        #         print(eigen_ext)
-        #         print(beta)
         grads = torch.matmul(eigen_ext, beta)
 
         return grads

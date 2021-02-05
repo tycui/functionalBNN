@@ -24,7 +24,7 @@ class Meanfieldlayer(nn.Module):
             mean_output = torch.matmul(x, self.mu_beta) + self.mu_bias
             sigma_output = torch.sqrt(torch.mm(x ** 2, sigma_beta ** 2) + sigma_bias ** 2)
 
-            epsilon = torch.randn(x.shape[-2], self.output_dim)
+            epsilon = torch.randn(x.shape[-2], self.output_dim).to(x.device)
             output = mean_output + sigma_output * epsilon
 
             return output
@@ -34,8 +34,8 @@ class Meanfieldlayer(nn.Module):
             return output
 
     def forward_multiple(self, x, n_functions):
-        epsilon_beta = torch.randn(n_functions, self.input_dim, self.output_dim)
-        epsilon_bias = torch.randn(n_functions, 1, self.output_dim)
+        epsilon_beta = torch.randn(n_functions, self.input_dim, self.output_dim).to(x.device)
+        epsilon_bias = torch.randn(n_functions, 1, self.output_dim).to(x.device)
 
         sigma_beta = torch.log(1 + torch.exp(self.rho_beta))
         sigma_bias = torch.log(1 + torch.exp(self.rho_bias))

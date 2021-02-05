@@ -10,7 +10,7 @@ from torch.utils.data import TensorDataset, DataLoader
 
 class FunctionalVI(object):
     def __init__(self, prior_kernel, posterior, rand_generator, stein_estimator, obs_var=0.1, n_oodsamples=50,
-                 n_functions=20, injected_noise=0.01):
+                 n_functions=20, injected_noise=0.01, use_cuda = False):
         self.prior_kernel = prior_kernel
         self.posterior = posterior
         self._rand_generator = rand_generator
@@ -19,11 +19,14 @@ class FunctionalVI(object):
         self.n_functions = n_functions
         self.injected_noise = injected_noise
         self.obs_var = obs_var
+        if use_cuda:
+            self.posterior.cuda()
+        self.use_cuda = use_cuda
 
     def build_function(self, x_random, noise_level=None):
         if noise_level != None:
             func_x_random = self.posterior.forward_multiple(x_random, self.n_functions)
-            func_x_random = func_x_random + noise_level * torch.randn_like(func_x_random)
+            func_x_random = func_x_random + noise_level * torch.randn_like(func_x_random).to(x_random.device)
         else:
             func_x_random = self.posterior.forward_multiple(x_random, self.n_functions)
 
@@ -56,21 +59,20 @@ class FunctionalVI(object):
         Note: the surrogate might be negative as the entropy surrogate is not the entropy itself.
         """
         # generate ood data points
-        x_random = self._rand_generator(self.n_oodsamples)
+        x_random = self._rand_generator(self.n_oodsamples).to(x_batch.device)
         x_kl = torch.cat([x_batch, x_random], axis=0)
         # estimate entropy surrogate
         func_x_random = self.build_function(x_kl, self.injected_noise)
         entropy_sur = self.stein_estimator.entropy_surrogate(func_x_random)
         # compute the analytical cross entropy
-        kernel_matrix = self.prior_kernel(x_kl) + self.injected_noise ** 2 * torch.eye(x_kl.shape[0])
-        prior_dist = distributions.MultivariateNormal(torch.zeros(x_kl.shape[0]), kernel_matrix)
+        kernel_matrix = self.prior_kernel(x_kl) + self.injected_noise ** 2 * torch.eye(x_kl.shape[0]).to(x_batch.device)
+        prior_dist = distributions.MultivariateNormal(torch.zeros(x_kl.shape[0]).to(x_batch.device), kernel_matrix)
         cross_entropy = -torch.mean(prior_dist.log_prob(func_x_random))
         self.kl_surrogate = -entropy_sur + cross_entropy
 
         return self.kl_surrogate
 
     def build_log_likelihood(self, x_batch, y_batch):
-        ## TO DO: compute likelihood
         criterion = nn.MSELoss()
         self.log_likelihood = -criterion(self.posterior(x_batch), y_batch) / (2. * self.obs_var)
         return self.log_likelihood
@@ -99,6 +101,9 @@ class FunctionalVI(object):
 
         for epoch in range(self.num_epoch):
             for x_batch, y_batch in train_dl:
+                if self.use_cuda:
+                    x_batch = x_batch.cuda()
+                    y_batch = y_batch.cuda()
                 optimizer.zero_grad()
                 self.posterior.train()
                 # calculate the training loss
@@ -119,6 +124,13 @@ class FunctionalVI(object):
                                                                                                       self.elbo,
                                                                                                       self.log_likelihood,
                                                                                                       self.kl_surrogate))
+                # Additional Info when using cuda
+                if self.use_cuda:
+                    print(torch.cuda.get_device_name(0))
+                    print('Memory Usage:')
+                    print('Allocated:', torch.cuda.memory_allocated(0), 'GB')
+                    print('Cached:   ', torch.cuda.memory_reserved(0), 'GB')
+
             # # tensorboard test
             # if epoch % 10 == 0:
             #     writer.add_scalar('log likelihood', running_ll / 10, epoch)
