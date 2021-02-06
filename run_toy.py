@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser('Functional BNN on toy example')
 parser.add_argument('-nn', '--num_nodes', type=int, default=100)
 parser.add_argument('-nl', '--num_layers', type=int, default=2)
-parser.add_argument('-no', '--n_oodsamples', type=int, default=20)
+parser.add_argument('-no', '--n_rand', type=int, default=20)
 parser.add_argument('-nf', '--n_functions', type=int, default=100)
 parser.add_argument('-in', '--injected_noise', type=float, default=0.08)
 parser.add_argument('-eta', type=float, default=0.)
@@ -57,7 +57,7 @@ mfnn = MeanfieldNNPosterior(num_features, args.num_nodes, args.num_layers)
 gradient_estimator = SpectralScoreEstimator(eta=args.eta, n_eigen_threshold=args.n_eigen_threshold)
 obs_var = toy_data.y_std ** 2
 
-fvi = FunctionalVI(kernel, mfnn, rand_generator, gradient_estimator, obs_var, args.n_oodsamples, args.n_functions,
+fvi = FunctionalVI(kernel, mfnn, rand_generator, gradient_estimator, obs_var, args.n_rand, args.n_functions,
                    args.injected_noise, args.cuda)
 
 fvi.build_prior_gp(x_train, y_train, args.learning_rate_gp, args.num_epoch_gp)
