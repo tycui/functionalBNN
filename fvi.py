@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
 import pyro
 import pyro.contrib.gp as gp
 import torch.distributions as distributions
@@ -37,7 +36,6 @@ class FunctionalVI(object):
         Optimizing the hyper-parameters of GP prior
         :param x: inputs of training data
         :param y: targets of training data
-        :return: NULL
         """
         print('Optimizing the GP prior')
         gpr = gp.models.GPRegression(x, y, self.prior_kernel, noise=torch.tensor(.1))
@@ -69,7 +67,6 @@ class FunctionalVI(object):
         prior_dist = distributions.MultivariateNormal(torch.zeros(x_kl.shape[0]).to(x_batch.device), kernel_matrix)
         cross_entropy = -torch.mean(prior_dist.log_prob(func_x_random))
         self.kl_surrogate = -entropy_sur + cross_entropy
-
         return self.kl_surrogate
 
     def build_log_likelihood(self, x_batch, y_batch):
@@ -77,15 +74,27 @@ class FunctionalVI(object):
         self.log_likelihood = -criterion(self.posterior(x_batch), y_batch) / (2. * self.obs_var)
         return self.log_likelihood
 
+    def build_evaluation(self, x_test, y_test):
+        """
+        compute the log likelihood and MSE on testset
+        """
+        if self.use_cuda:
+            x_test = x_test.cuda()
+            y_test = y_test.cuda()
+        y_pred = self.posterior.forward_multiple(x_test, self.n_functions)
+        self.eval_rmse = torch.sqrt(torch.mean((torch.mean(y_pred, 0) - y_test.view(-1)) ** 2)).detach()
+        log_likelihood_samples = -(y_pred - y_test.view(-1)) ** 2 / (2. * self.obs_var)
+        self.eval_ll = torch.mean(torch.logsumexp(log_likelihood_samples, 0) - torch.log(torch.tensor(self.n_functions).float())).detach()
+
+        return self.eval_rmse, self.eval_ll
+
     def init_training(self, x_train, learning_rate=0.001, batch_size=50, num_epoch=1000, coeff_ll=1., coeff_kl=1.):
         self.num_training, self.num_dim = x_train.shape
         self.learning_rate = learning_rate
-
         if batch_size < int(self.num_training / 10):
             self.batch_size = batch_size
         else:
             self.batch_size = self.num_training
-
         self.num_epoch = num_epoch
         self.coeff_ll = coeff_ll
         self.coeff_kl = coeff_kl
@@ -124,12 +133,13 @@ class FunctionalVI(object):
                                                                                                       self.elbo,
                                                                                                       self.log_likelihood,
                                                                                                       self.kl_surrogate))
-                # Additional Info when using cuda
-                if self.use_cuda:
-                    print(torch.cuda.get_device_name(0))
-                    print('Memory Usage:')
-                    print('Allocated:', torch.cuda.memory_allocated(0), 'GB')
-                    print('Cached:   ', torch.cuda.memory_reserved(0), 'GB')
+
+        # Additional Info when using cuda
+        if self.use_cuda:
+            print(torch.cuda.get_device_name(0))
+            print('Memory Usage:')
+            print('Allocated:', round(torch.cuda.memory_allocated(0)/1024**2,1), 'MB')
+            print('Cached:   ', round(torch.cuda.memory_reserved(0)/1024**2,1), 'MB')
 
             # # tensorboard test
             # if epoch % 10 == 0:

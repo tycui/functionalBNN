@@ -31,9 +31,9 @@ def data_generating_bike(data_path, num_random=0, noise_level=0):
     
     # transfer data into tensor
     x = torch.tensor(trainx, dtype = torch.float)
-    y = torch.tensor(trainy[0], dtype = torch.float).view(-1,1)
+    y = torch.tensor(trainy[0], dtype = torch.float)
     x_test = torch.tensor(testx, dtype = torch.float)
-    y_test = torch.tensor(testy[0], dtype = torch.float).view(-1,1)
+    y_test = torch.tensor(testy[0], dtype = torch.float)
     
     if num_random != 0:
         rand_features = torch.randn(x.shape[0], num_random) * 2
@@ -77,9 +77,9 @@ def data_generating_cal(data_path, num_random=0, noise_level=0):
     
     # transfer data into tensor
     x = torch.tensor(trainx, dtype = torch.float)
-    y = torch.tensor(trainy[0], dtype = torch.float).view(-1,1)
+    y = torch.tensor(trainy[0], dtype = torch.float)
     x_test = torch.tensor(testx, dtype = torch.float)
-    y_test = torch.tensor(testy[0], dtype = torch.float).view(-1,1)
+    y_test = torch.tensor(testy[0], dtype = torch.float)
     
     if num_random != 0:
         rand_features = torch.randn(x.shape[0], num_random) * 2
@@ -119,9 +119,9 @@ def data_generating_concrete(data_path, num_random=0, noise_level=0):
     
     # transfer data into tensor
     x = torch.tensor(trainx, dtype = torch.float)
-    y = torch.tensor(trainy[0], dtype = torch.float).view(-1,1)
+    y = torch.tensor(trainy[0], dtype = torch.float)
     x_test = torch.tensor(testx, dtype = torch.float)
-    y_test = torch.tensor(testy[0], dtype = torch.float).view(-1,1)
+    y_test = torch.tensor(testy[0], dtype = torch.float)
     
     if num_random != 0:
         rand_features = torch.randn(x.shape[0], num_random) * 2
@@ -162,9 +162,9 @@ def data_generating_energy(data_path, num_random=0, noise_level=0):
     
     # transfer data into tensor
     x = torch.tensor(trainx, dtype = torch.float)
-    y = torch.tensor(trainy[0], dtype = torch.float).view(-1,1)
+    y = torch.tensor(trainy[0], dtype = torch.float)
     x_test = torch.tensor(testx, dtype = torch.float)
-    y_test = torch.tensor(testy[0], dtype = torch.float).view(-1,1)
+    y_test = torch.tensor(testy[0], dtype = torch.float)
     
     if num_random != 0:
         rand_features = torch.randn(x.shape[0], num_random) * 2
@@ -204,9 +204,9 @@ def data_generating_yacht(data_path, num_random=0, noise_level=0):
     
     # transfer data into tensor
     x = torch.tensor(trainx, dtype = torch.float)
-    y = torch.tensor(trainy[0], dtype = torch.float).view(-1,1)
+    y = torch.tensor(trainy[0], dtype = torch.float)
     x_test = torch.tensor(testx, dtype = torch.float)
-    y_test = torch.tensor(testy[0], dtype = torch.float).view(-1,1)
+    y_test = torch.tensor(testy[0], dtype = torch.float)
     
     if num_random != 0:
         rand_features = torch.randn(x.shape[0], num_random) * 2
@@ -245,9 +245,9 @@ def data_generating_boston(data_path, num_random=0, noise_level=0):
     
     # transfer data into tensor
     x = torch.tensor(trainx, dtype = torch.float)
-    y = torch.tensor(trainy[0], dtype = torch.float).view(-1,1)
+    y = torch.tensor(trainy[0], dtype = torch.float)
     x_test = torch.tensor(testx, dtype = torch.float)
-    y_test = torch.tensor(testy[0], dtype = torch.float).view(-1,1)
+    y_test = torch.tensor(testy[0], dtype = torch.float)
     
     if num_random != 0:
         rand_features = torch.randn(x.shape[0], num_random) * 2
@@ -286,9 +286,9 @@ def data_generating_kin8nm(data_path, num_random=0, noise_level=0):
     
     # transfer data into tensor
     x = torch.tensor(trainx, dtype = torch.float)
-    y = torch.tensor(trainy[0], dtype = torch.float).view(-1,1)
+    y = torch.tensor(trainy[0], dtype = torch.float)
     x_test = torch.tensor(testx, dtype = torch.float)
-    y_test = torch.tensor(testy[0], dtype = torch.float).view(-1,1)
+    y_test = torch.tensor(testy[0], dtype = torch.float)
     
     if num_random != 0:
         rand_features = torch.randn(x.shape[0], num_random) * 2

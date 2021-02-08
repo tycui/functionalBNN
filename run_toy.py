@@ -1,7 +1,10 @@
-from bnn_posterior import *
-from fvi import *
-from gradient_estimator import *
-from toy_dataset import *
+import torch
+import numpy as np
+import pyro.contrib.gp as gp
+from bnn_posterior import MeanfieldNNPosterior
+from fvi import FunctionalVI
+from gradient_estimator import SpectralScoreEstimator
+from toy_dataset import sin_toy
 import argparse
 import matplotlib.pyplot as plt
 
@@ -69,9 +72,8 @@ fvi.init_training(x_train, args.learning_rate_bnn, args.batch_size, args.num_epo
 # fvi.training(x_train, y_train, writer)
 fvi.training(x_train, y_train)
 
-fvi.posterior.eval()
-
 # Plot
+fvi.posterior.eval()
 predictive_posterior = []
 for i in range(2000):
     fvi.posterior.train()
