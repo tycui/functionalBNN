@@ -1,11 +1,11 @@
 import torch
 import numpy as np
-import pyro.contrib.gp as gp
+import gpytorch
 from bnn_posterior import MeanfieldNNPosterior
 from fvi import FunctionalVI
 from gradient_estimator import SpectralScoreEstimator
 from data.data_generation import data_generating_yacht
-from utils import median_distance_global
+from gp_prior import RBFGPModel
 import argparse
 import os
 import matplotlib.pyplot as plt
@@ -45,18 +45,18 @@ upper_ap = np.maximum(np.max(x_train.numpy()), np.max(x_test.numpy()))
 def rand_generator(n_rand, n_dim = num_features,  minval=lower_ap, maxval=upper_ap):
     return torch.rand((n_rand, n_dim)) * (maxval - minval) + minval
 
-## TODO: initialize kernel hyper-parameters (replace the pyro with gpytorch)
-ls = median_distance_global(x_train).astype('float32')
-# ls[abs(ls) < 1e-6] = 1.
-kernel = gp.kernels.RBF(input_dim=num_features, variance=torch.tensor(1.), lengthscale=torch.tensor(ls))
+# ls = median_distance_global(x_train).astype('float32')
+# # ls[abs(ls) < 1e-6] = 1.
+# kernel = gp.kernels.RBF(input_dim=num_features, variance=torch.tensor(1.), lengthscale=torch.tensor(ls))
 
-## TODO: learnable likelihood variance
-obs_var = 0.5
+likelihood = gpytorch.likelihoods.GaussianLikelihood()
+gp_prior = RBFGPModel(x_train, y_train, likelihood)
 
-mfnn = MeanfieldNNPosterior(num_features, args.num_nodes, args.num_layers, obs_var)
+
+mfnn = MeanfieldNNPosterior(num_features, args.num_nodes, args.num_layers)
 gradient_estimator = SpectralScoreEstimator(eta=args.eta, n_eigen_threshold=args.n_eigen_threshold)
 
-fvi = FunctionalVI(kernel, mfnn, rand_generator, gradient_estimator, args.n_rand, args.n_functions,
+fvi = FunctionalVI(gp_prior, mfnn, rand_generator, gradient_estimator, args.n_rand, args.n_functions,
                    args.injected_noise, args.cuda)
 fvi.build_prior_gp(x_train, y_train, args.learning_rate_gp, args.num_epoch_gp)
 fvi.init_training(x_train, args.learning_rate_bnn, args.batch_size, args.num_epoch_bnn, args.coeff_ll,

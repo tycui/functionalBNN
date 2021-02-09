@@ -56,7 +56,7 @@ class MeanfieldNNPosterior(nn.Module):
 
         if obs_var == None:
             self.obs_var = None
-            self.obs_rho = nn.Parameter(torch.tensor([-0.5], dtype = torch.float32))
+            self.obs_rho = nn.Parameter(torch.tensor([.5], dtype = torch.float32))
         else:
             self.obs_var = torch.tensor(obs_var)
         self.prior_noise = distributions.Gamma(torch.tensor([6.0]), torch.tensor([6.0]))
