@@ -41,7 +41,7 @@ x_train, y_train, x_test, y_test = data_generating_yacht(os.getcwd()+'/data/')
 num_features = x_train.shape[-1]
 lower_ap = np.minimum(np.min(x_train.numpy()), np.min(x_test.numpy()))
 upper_ap = np.maximum(np.max(x_train.numpy()), np.max(x_test.numpy()))
-o
+
 def rand_generator(n_rand, n_dim = num_features,  minval=lower_ap, maxval=upper_ap):
     return torch.rand((n_rand, n_dim)) * (maxval - minval) + minval
 
@@ -49,14 +49,14 @@ def rand_generator(n_rand, n_dim = num_features,  minval=lower_ap, maxval=upper_
 ls = median_distance_global(x_train).astype('float32')
 # ls[abs(ls) < 1e-6] = 1.
 kernel = gp.kernels.RBF(input_dim=num_features, variance=torch.tensor(1.), lengthscale=torch.tensor(ls))
-mfnn = MeanfieldNNPosterior(num_features, args.num_nodes, args.num_layers)
-gradient_estimator = SpectralScoreEstimator(eta=args.eta, n_eigen_threshold=args.n_eigen_threshold)
 
 ## TODO: learnable likelihood variance
 obs_var = 0.5
 
+mfnn = MeanfieldNNPosterior(num_features, args.num_nodes, args.num_layers, obs_var)
+gradient_estimator = SpectralScoreEstimator(eta=args.eta, n_eigen_threshold=args.n_eigen_threshold)
 
-fvi = FunctionalVI(kernel, mfnn, rand_generator, gradient_estimator, obs_var, args.n_rand, args.n_functions,
+fvi = FunctionalVI(kernel, mfnn, rand_generator, gradient_estimator, args.n_rand, args.n_functions,
                    args.injected_noise, args.cuda)
 fvi.build_prior_gp(x_train, y_train, args.learning_rate_gp, args.num_epoch_gp)
 fvi.init_training(x_train, args.learning_rate_bnn, args.batch_size, args.num_epoch_bnn, args.coeff_ll,
@@ -65,6 +65,11 @@ fvi.init_training(x_train, args.learning_rate_bnn, args.batch_size, args.num_epo
 # fvi.training(x_train, y_train, writer)
 fvi.training(x_train, y_train)
 
+mse_test, ll_test = fvi.build_evaluation(x_train, y_train)
+print('Evaluation on training set: MSE={:.5f} | logLL={:.5f}'.format(mse_test, ll_test))
+
 mse_test, ll_test = fvi.build_evaluation(x_test, y_test)
-print('Evaluation on test set: MSE={:.5f} | logLL={:.5f}'.format(mse_test, ll_test))
+print('Evaluation on testing set: MSE={:.5f} | logLL={:.5f}'.format(mse_test, ll_test))
+
+print(fvi.posterior.get_obs_var)
 

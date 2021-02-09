@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import torch.distributions as distributions
 
 class Meanfieldlayer(nn.Module):
     def __init__(self, input_dim, output_dim):
@@ -47,11 +48,18 @@ class Meanfieldlayer(nn.Module):
         return output
 
 class MeanfieldNNPosterior(nn.Module):
-    def __init__(self, num_feature, num_nodes, num_layers):
+    def __init__(self, num_feature, num_nodes, num_layers, obs_var = None):
         super(MeanfieldNNPosterior, self).__init__()
         self.num_feature = num_feature
         self.num_layers = num_layers
         self.num_nodes = num_nodes
+
+        if obs_var == None:
+            self.obs_var = None
+            self.obs_rho = nn.Parameter(torch.tensor([-0.5], dtype = torch.float32))
+        else:
+            self.obs_var = torch.tensor(obs_var)
+        self.prior_noise = distributions.Gamma(torch.tensor([6.0]), torch.tensor([6.0]))
 
         list_of_layers = [Meanfieldlayer(num_feature, num_nodes)]
         list_of_layers += [Meanfieldlayer(num_nodes, num_nodes) for i in range(num_layers-1)]
@@ -59,6 +67,21 @@ class MeanfieldNNPosterior(nn.Module):
 
         self.layers = nn.ModuleList(list_of_layers)
         self.activation_fn = nn.ReLU()
+
+    @property
+    def get_obs_var(self):
+        if self.obs_var == None:
+            return torch.log(1 + torch.exp(self.obs_rho)) ** 2
+        else:
+            return self.obs_var
+
+    @property
+    def get_kl_prior(self):
+        if self.obs_var == None:
+            self.kl_prior = -self.prior_noise.log_prob(1. / self.get_obs_var)
+        else:
+            self.kl_prior = torch.tensor(0.)
+        return self.kl_prior
 
     def forward(self, x):
         for i, j in enumerate(self.layers):

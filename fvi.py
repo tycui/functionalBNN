@@ -8,7 +8,7 @@ from torch.utils.data import TensorDataset, DataLoader
 
 
 class FunctionalVI(object):
-    def __init__(self, prior_kernel, posterior, rand_generator, stein_estimator, obs_var=0.1, n_oodsamples=50,
+    def __init__(self, prior_kernel, posterior, rand_generator, stein_estimator, n_oodsamples=50,
                  n_functions=20, injected_noise=0.01, use_cuda = False):
         self.prior_kernel = prior_kernel
         self.posterior = posterior
@@ -17,7 +17,6 @@ class FunctionalVI(object):
         self.n_oodsamples = n_oodsamples
         self.n_functions = n_functions
         self.injected_noise = injected_noise
-        self.obs_var = obs_var
         if use_cuda:
             self.posterior.cuda()
         self.use_cuda = use_cuda
@@ -71,7 +70,7 @@ class FunctionalVI(object):
 
     def build_log_likelihood(self, x_batch, y_batch):
         criterion = nn.MSELoss()
-        self.log_likelihood = -criterion(self.posterior(x_batch), y_batch) / (2. * self.obs_var)
+        self.log_likelihood = -criterion(self.posterior(x_batch), y_batch) / (2. * self.posterior.get_obs_var) - 0.5 * torch.log(self.posterior.get_obs_var)
         return self.log_likelihood
 
     def build_evaluation(self, x_test, y_test):
@@ -83,12 +82,15 @@ class FunctionalVI(object):
             y_test = y_test.cuda()
         y_pred = self.posterior.forward_multiple(x_test, self.n_functions)
         self.eval_rmse = torch.sqrt(torch.mean((torch.mean(y_pred, 0) - y_test.view(-1)) ** 2)).detach()
-        log_likelihood_samples = -(y_pred - y_test.view(-1)) ** 2 / (2. * self.obs_var)
+        log_likelihood_samples = -(y_pred - y_test.view(-1)) ** 2 / (2. * self.posterior.get_obs_var) - 0.5 * torch.log(self.posterior.get_obs_var)
         self.eval_ll = torch.mean(torch.logsumexp(log_likelihood_samples, 0) - torch.log(torch.tensor(self.n_functions).float())).detach()
 
         return self.eval_rmse, self.eval_ll
 
     def init_training(self, x_train, learning_rate=0.001, batch_size=50, num_epoch=1000, coeff_ll=1., coeff_kl=1.):
+        """
+        Initialize the training hyper-parameters
+        """
         self.num_training, self.num_dim = x_train.shape
         self.learning_rate = learning_rate
         if batch_size < int(self.num_training / 10):
@@ -100,6 +102,9 @@ class FunctionalVI(object):
         self.coeff_kl = coeff_kl
 
     def training(self, x, y, writer = None):
+        """
+        Learning BNN posterior with stochastic variational inference
+        """
         posterior_parameters = set(self.posterior.parameters())
         optimizer = optim.Adam(posterior_parameters, lr=self.learning_rate, eps=1e-3)
         train_dl = DataLoader(TensorDataset(x, y), batch_size=self.batch_size, shuffle=True)
@@ -117,7 +122,7 @@ class FunctionalVI(object):
                 self.posterior.train()
                 # calculate the training loss
                 ll = self.build_log_likelihood(x_batch, y_batch.view(-1,1))
-                kl = self.build_kl(x_batch)
+                kl = self.build_kl(x_batch) + self.posterior.get_kl_prior.to(x_batch.device)
                 self.elbo = self.coeff_ll * ll - self.coeff_kl * kl / self.batch_size
                 # backpropogate the gradient
                 (-self.elbo).backward()
@@ -130,8 +135,8 @@ class FunctionalVI(object):
             if epoch % int(self.num_epoch / 10) == 0:
                 print('>>> Epoch {:5d}/{:5d} | elbo_sur={:.5f} | logLL={:.5f} | kl_sur={:.5f}'.format(epoch,
                                                                                                       self.num_epoch,
-                                                                                                      self.elbo,
-                                                                                                      self.log_likelihood,
+                                                                                                      self.elbo.item(),
+                                                                                                      self.log_likelihood.item(),
                                                                                                       self.kl_surrogate))
 
         # Additional Info when using cuda
