@@ -5,7 +5,7 @@ from bnn_posterior import MeanfieldNNPosterior
 from fvi import FunctionalVI
 from gradient_estimator import SpectralScoreEstimator
 from data.data_generation import data_generating_yacht
-from gp_prior import RBFGPModel
+from gp_prior import GPPrior
 import argparse
 import os
 import matplotlib.pyplot as plt
@@ -50,7 +50,7 @@ def rand_generator(n_rand, n_dim = num_features,  minval=lower_ap, maxval=upper_
 # kernel = gp.kernels.RBF(input_dim=num_features, variance=torch.tensor(1.), lengthscale=torch.tensor(ls))
 
 likelihood = gpytorch.likelihoods.GaussianLikelihood()
-gp_prior = RBFGPModel(x_train, y_train, likelihood)
+gp_prior = GPPrior(x_train, y_train, likelihood)
 
 
 mfnn = MeanfieldNNPosterior(num_features, args.num_nodes, args.num_layers)

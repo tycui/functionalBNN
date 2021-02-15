@@ -215,6 +215,7 @@ def data_generating_yacht(data_path, num_random=0, noise_level=0):
         x_test = torch.cat((x_test, rand_features), 1)
     
     if noise_level != 0:
+        torch.manual_seed(129)
         noise = torch.randn_like(y) * np.sqrt(noise_level); noise_test = torch.randn_like(y_test) * np.sqrt(noise_level)
         y = y * np.sqrt(1-noise_level) + noise; y_test = y_test * np.sqrt(1-noise_level) + noise_test;   
         

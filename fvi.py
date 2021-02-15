@@ -9,7 +9,7 @@ from torch.utils.data import TensorDataset, DataLoader
 class FunctionalVI(object):
     def __init__(self, GP_prior, posterior, rand_generator, stein_estimator, n_oodsamples=50,
                  n_functions=20, injected_noise=0.01, use_cuda=False):
-        self.GP_prior = GP_prior
+        self.gp_prior = GP_prior
         self.posterior = posterior
         self._rand_generator = rand_generator
         self.stein_estimator = stein_estimator
@@ -18,7 +18,7 @@ class FunctionalVI(object):
         self.injected_noise = injected_noise
         if use_cuda:
             self.posterior.cuda()
-            self.GP_prior.cuda()
+            self.gp_prior.cuda()
 
         self.use_cuda = use_cuda
 
@@ -42,14 +42,14 @@ class FunctionalVI(object):
             x = x.cuda()
             y = y.cuda()
         # Find optimal model hyperparameters
-        self.GP_prior.train()
-        self.GP_prior.likelihood.train()
+        self.gp_prior.train()
+        self.gp_prior.likelihood.train()
         # Use the adam optimizer
-        optimizer = torch.optim.Adam(self.GP_prior.parameters(), lr=lr_gp)  # Includes GaussianLikelihood parameters
-        mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.GP_prior.likelihood, self.GP_prior)
+        optimizer = torch.optim.Adam(self.gp_prior.parameters(), lr=lr_gp)  # Includes GaussianLikelihood parameters
+        mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.gp_prior.likelihood, self.gp_prior)
         for i in range(num_steps):
             optimizer.zero_grad()
-            output = self.GP_prior(x)
+            output = self.gp_prior(x)
             loss = -mll(output, y)
             loss.backward()
             optimizer.step()
@@ -70,9 +70,9 @@ class FunctionalVI(object):
         func_x_random = self.build_function(x_kl, self.injected_noise)
         entropy_sur = self.stein_estimator.entropy_surrogate(func_x_random)
         # compute the analytical cross entropy
-        kernel_matrix = self.GP_prior.covar_module(x_kl).evaluate() + \
+        kernel_matrix = self.gp_prior.covar_module(x_kl).evaluate() + \
                         self.injected_noise ** 2 * torch.eye(x_kl.shape[0]).to(x_batch.device)
-        prior_dist = distributions.MultivariateNormal(self.GP_prior.mean_module(x_kl).to(x_batch.device),
+        prior_dist = distributions.MultivariateNormal(self.gp_prior.mean_module(x_kl).to(x_batch.device),
                                                       kernel_matrix)
         cross_entropy = -torch.mean(prior_dist.log_prob(func_x_random))
         self.kl_surrogate = -entropy_sur + cross_entropy
@@ -152,8 +152,8 @@ class FunctionalVI(object):
                                                                                                       self.log_likelihood.item(),
                                                                                                       self.kl_surrogate))
 
-            if self.use_cuda:
-                print(torch.cuda.get_device_name(0))
-                print('Memory Usage:')
-                print('Allocated:', round(torch.cuda.memory_allocated(0) / 1024 ** 1, 1), 'KB')
-                print('Cached:   ', round(torch.cuda.memory_reserved(0) / 1024 ** 2, 1), 'MB')
+        if self.use_cuda:
+            print(torch.cuda.get_device_name(0))
+            print('Memory Usage:')
+            print('Allocated:', round(torch.cuda.memory_allocated(0) / 1024 ** 1, 1), 'KB')
+            print('Cached:   ', round(torch.cuda.memory_reserved(0) / 1024 ** 2, 1), 'MB')
