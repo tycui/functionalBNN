@@ -97,8 +97,10 @@ class FunctionalVI(object):
             self.posterior.get_obs_var)
         self.eval_ll = torch.mean(
             torch.logsumexp(log_likelihood_samples, 0) - torch.log(torch.tensor(self.n_functions).float())).detach()
+        self.posterior.eval()
+        self.pve = (1. - torch.var(self.posterior(x_test).view(-1) - y_test.view(-1)) / torch.var(y_test.view(-1))).detach()
 
-        return self.eval_rmse, self.eval_ll
+        return self.eval_rmse, self.eval_ll, self.pve
 
     def init_training(self, x_train, learning_rate=0.001, batch_size=50, num_epoch=1000, coeff_ll=1., coeff_kl=1.):
         """
